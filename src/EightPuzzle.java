@@ -1,5 +1,9 @@
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.TreeMap;
+
+import org.omg.CORBA.Current;
 
 /**
  * @author dschwenk
@@ -42,7 +46,7 @@ public class EightPuzzle {
 	
 	
 	/**
-	 * function verifies if it큦 possible to move the 0 up, if so a new child is added to the list
+	 * function verifies if it's possible to move the 0 up, if so a new child is added to the list
 	 * @param parentNode current processed node
 	 * @param childNodes list of all nodes
 	 */
@@ -67,7 +71,7 @@ public class EightPuzzle {
 	
 	
 	/**
-	 * function verifies if it큦 possible to move the 0 down, if so a new child is added to the list
+	 * function verifies if it's possible to move the 0 down, if so a new child is added to the list
 	 * @param parentNode current processed node
 	 * @param childNodes list of all nodes
 	 */
@@ -94,7 +98,7 @@ public class EightPuzzle {
 	
 	
 	/**
-	 * function verifies if it큦 possible to move the 0 left, if so a new child is added to the list
+	 * function verifies if it's possible to move the 0 left, if so a new child is added to the list
 	 * @param parentNode current processed node
 	 * @param childNodes list of all nodes
 	 */
@@ -120,7 +124,7 @@ public class EightPuzzle {
 	
 	
 	/**
-	 * function verifies if it큦 possible to move the 0 right, if so a new child is added to the list
+	 * function verifies if it's possible to move the 0 right, if so a new child is added to the list
 	 * @param parentNode current processed node
 	 * @param childNodes list of all nodes
 	 */	
@@ -272,6 +276,87 @@ public class EightPuzzle {
 	}
 
 
+
+	/**
+	 * Calculates heuristic rating - counts digits with wrong position compared to goalNode
+	 * @param node current processed node
+	 * @param goalNode solution node
+	 * @return value of rating
+	 */
+	private int heuristicHOne(int[] node, int[] goalNode){
+
+		int value = 0; // rating (lower - better) - counts digits with wrong position compared to goalNode
+
+		for(int i=0;i<node.length;i++){
+			if(node[i] != goalNode[i]){
+				value++; // increase rating
+			}
+		}
+
+		return value;
+	}
+
+
+
+	/**
+	 * Function searches for a goal node / solution with the A* algorithm
+	 * @param startNode start node
+	 * @param goalNode goal node
+	 * @param heuristicFunction which heuristic function should be used
+	 */
+	private void aStar(int[] startNode, int[] goalNode, String heuristicFunction){
+
+		// which rating function should be used
+		Method ratingFunction = null;
+
+		try {
+			ratingFunction = this.getClass().getDeclaredMethod(heuristicFunction, int[].class, int[].class);
+		} catch (NoSuchMethodException | SecurityException e){
+			e.printStackTrace();
+		}
+
+		// map to store each node with corresponding rating (TreeMap stores sorted sequence of element-pairs (pair consists a value and key)
+		TreeMap<Integer, int[]> nodeRating = new TreeMap<Integer, int[]>();
+
+		// list storing all nodes
+		ArrayList<int[]> nodeList = new ArrayList<int[]>();
+
+		// add start node to node list
+		nodeList.add(startNode);
+
+		while(!nodeList.isEmpty()){
+
+			int[] currentNode = nodeList.get(0); // get first node of node list
+
+			nodeList.remove(0); // remove first element from node list
+
+			if(zielErreicht(currentNode)){
+				System.out.println("Solution found!");
+				return;
+			}
+
+			// get child nodes of current node
+			appendChildNodes(currentNode, nodeList);
+
+			for(int[] node : nodeList){
+				int rating = 0;
+				try {
+					rating = heuristicHOne(node, goalNode); // get rating of node
+				} catch (Exception e){
+					e.printStackTrace();
+				}
+
+				nodeRating.put(rating, node);
+			}
+
+			// clear node list and fill it with sorted nodes of map nodeRating
+			nodeList.clear();
+			nodeList.addAll(nodeRating.values());
+		}
+	}
+
+
+
 	/**
 	 * @param args
 	 */
@@ -282,31 +367,34 @@ public class EightPuzzle {
 		maxDepth = 10;
 		
 		/*
-		 * 	1   3
+		 *  1   3
 		 *  4 2 6
-		 *  7 5 8 
-		 */ 
+		 *  7 5 8
+		 */
 		//int[] startNode = {1, 0, 3, 4, 2, 6, 7, 5, 8};
 		int[] startNode = {0, 2, 3, 1, 4, 6, 7, 5, 8};		
-		
-		
+
+
 		// size of puzzle - size 3 means 3x3 puzzle
 		puzzleSize = (int) Math.sqrt(startNode.length);
-		
+
 		// list of nodes
 		ArrayList<int[]> nodeList = new ArrayList<int[]>();
-		
+
 		// add start node to list
 		nodeList.add(startNode);
-		
+
 		System.out.println("Start Breadth-first search: ");
 		puzzle.breadthFirstSearch(nodeList, goalNode, 0, maxDepth);
-		
-	    System.out.println("\nStart Depth-first search:");
-	    puzzle.depthFirstSearch(startNode, goalNode, 0, maxDepth);
-	    
-	    System.out.println("\nStart Iterative-Deepening:");
-	    puzzle.iterativeDeepening(startNode, goalNode);
+
+		System.out.println("\nStart Depth-first search:");
+		puzzle.depthFirstSearch(startNode, goalNode, 0, maxDepth);
+
+		System.out.println("\nStart Iterative-Deepening:");
+		puzzle.iterativeDeepening(startNode, goalNode);
+
+		System.out.println("\nStart Iterative-Deepening: A*-Search with rating function 'h1':");
+		puzzle.aStar(startNode, goalNode, "heuristicHOne");	    
 	}
 
 }
